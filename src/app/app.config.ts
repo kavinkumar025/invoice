@@ -2,7 +2,6 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessC
 import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getDatabase, provideDatabase } from '@angular/fire/database';
-import { getFunctions, provideFunctions } from '@angular/fire/functions';
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
@@ -15,7 +14,6 @@ export const appConfig: ApplicationConfig = {
     provideFirebaseApp(() => initializeApp(firebaseConfig)),
     provideAuth(() => getAuth()),
     provideDatabase(() => getDatabase()),
-    provideFunctions(() => getFunctions(undefined, 'us-central1')),
     provideRouter(routes)
   ]
 };

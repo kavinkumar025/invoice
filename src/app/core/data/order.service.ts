@@ -1,6 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { Database, off, onValue, push, ref, runTransaction, set, update } from '@angular/fire/database';
-import { Functions, httpsCallable } from '@angular/fire/functions';
 
 import { AuthService } from '../auth/auth.service';
 import { AddressService } from './address.service';
@@ -15,7 +14,6 @@ interface GenerateInvoiceResponse extends Invoice {
 @Injectable({ providedIn: 'root' })
 export class OrderService {
   private readonly database = inject(Database);
-  private readonly functions = inject(Functions);
   private readonly authService = inject(AuthService);
   private readonly cartService = inject(CartService);
   private readonly addressService = inject(AddressService);
@@ -183,9 +181,28 @@ export class OrderService {
 
   async generateInvoice(orderId: string): Promise<GenerateInvoiceResponse> {
     try {
-      const callable = httpsCallable<{ orderId: string }, GenerateInvoiceResponse>(this.functions, 'generateInvoicePdf');
-      const response = await callable({ orderId });
-      return response.data;
+      const currentUser = this.authService.currentUser();
+
+      if (!currentUser) {
+        throw new Error('You must be signed in to generate an invoice.');
+      }
+
+      const idToken = await currentUser.getIdToken();
+      const response = await fetch(this.invoiceApiUrl(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ orderId })
+      });
+
+      const payload = (await response.json().catch(() => null)) as { error?: string } & Partial<GenerateInvoiceResponse> | null;
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Could not generate the invoice PDF.');
+      }
+
+      return payload as GenerateInvoiceResponse;
     } catch (error) {
       throw new Error(this.describeInvoiceError(error));
     }
@@ -233,22 +250,33 @@ export class OrderService {
   }
 
   private describeInvoiceError(error: unknown): string {
-    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
     const message = typeof error === 'object' && error && 'message' in error ? String(error.message) : '';
 
-    if (code.includes('unauthenticated')) {
+    if (message.toLowerCase().includes('signed in')) {
       return 'Sign in again and retry invoice generation.';
     }
 
-    if (code.includes('not-found')) {
+    if (message.toLowerCase().includes('not found')) {
       return 'The order could not be found for invoice generation.';
     }
 
-    if (code.includes('internal') || message.toLowerCase() === 'internal') {
-      return 'Invoice generation failed in Firebase Functions. Deploy the latest functions and verify Firebase Storage is enabled.';
+    if (message.toLowerCase().includes('unauthorized') || message.toLowerCase().includes('forbidden')) {
+      return 'You are not allowed to generate an invoice for this order.';
+    }
+
+    if (message.toLowerCase().includes('vercel api') || message.toLowerCase().includes('storage')) {
+      return 'Invoice generation failed in the Vercel API route. Verify Vercel environment variables for Firebase Admin and Storage.';
     }
 
     return message || 'Could not generate the invoice PDF.';
+  }
+
+  private invoiceApiUrl(): string {
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      return 'http://localhost:3000/api/generate-invoice';
+    }
+
+    return '/api/generate-invoice';
   }
 
   invoiceForOrder(orderId: string): Invoice | undefined {
