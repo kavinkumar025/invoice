@@ -148,6 +148,25 @@ export class AuthService {
     await this.router.navigateByUrl('/');
   }
 
+  async updateProfile(payload: { name: string; phone?: string; businessName?: string }): Promise<void> {
+    const user = this.currentUserSignal();
+    const profile = this.profileSignal();
+
+    if (!user || !profile) {
+      throw new Error('You must be signed in to update your account.');
+    }
+
+    const nextProfile: UserProfile = {
+      ...profile,
+      name: payload.name,
+      phone: payload.phone,
+      businessName: payload.businessName
+    };
+
+    await set(ref(this.database, `users/${user.uid}`), removeUndefinedDeep(nextProfile));
+    this.profileSignal.set(nextProfile);
+  }
+
   private bindProfile(user: User | null): void {
     if (this.profilePath) {
       off(ref(this.database, this.profilePath));

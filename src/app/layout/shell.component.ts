@@ -45,6 +45,10 @@ import { CartService } from '../core/data/cart.service';
                 }
               </a>
             }
+
+            @if (authService.profile()) {
+              <a routerLink="/account" routerLinkActive="active-link">My account</a>
+            }
           </nav>
 
           <div class="shell-actions">

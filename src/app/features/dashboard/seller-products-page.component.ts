@@ -1,33 +1,117 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule, CurrencyPipe, DatePipe, TitleCasePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
+import { AuthService } from '../../core/auth/auth.service';
+import { OrderService } from '../../core/data/order.service';
 import { ProductService } from '../../core/data/product.service';
 import { Product, UnitCode, unitOptions } from '../../core/models/commerce.models';
 
 @Component({
   selector: 'app-seller-products-page',
-  imports: [CommonModule, ReactiveFormsModule, CurrencyPipe],
+  imports: [CommonModule, ReactiveFormsModule, CurrencyPipe, DatePipe, TitleCasePipe, RouterLink],
   template: `
     <section class="page-section seller-layout">
-      <header class="seller-header">
+      <header class="surface-card seller-hero">
         <div>
-          <span class="eyebrow">Seller desk</span>
-          <h1 class="section-title">Manage live products in Realtime Database</h1>
-          <p class="muted">This is the first seller workflow: add stock, publish products, and control catalog availability.</p>
+          <span class="eyebrow">Seller dashboard</span>
+          <h1 class="section-title">Welcome back, {{ authService.profile()?.businessName || authService.profile()?.name }}</h1>
+          <p class="muted">Track sales, view complete order flow, manage product listings, and keep your seller account ready for invoice and order operations.</p>
         </div>
 
-        <div class="seller-stats">
-          <article class="surface-card stat-card">
-            <strong>{{ sellerProducts().length }}</strong>
-            <span>Products</span>
-          </article>
-          <article class="surface-card stat-card">
-            <strong>{{ activeCount() }}</strong>
-            <span>Active listings</span>
-          </article>
+        <div class="cta-row">
+          <a class="btn btn-primary" routerLink="/seller/orders">Open orders</a>
+          <a class="btn btn-secondary" routerLink="/account">My account</a>
         </div>
       </header>
+
+      <div class="seller-panels">
+        <article class="surface-card stat-card accent-card">
+          <span>Profit snapshot</span>
+          <strong>{{ grossSales() | currency:'INR':'symbol':'1.0-2' }}</strong>
+          <small class="muted">Gross revenue before expenses</small>
+        </article>
+
+        <article class="surface-card stat-card">
+          <span>Delivered revenue</span>
+          <strong>{{ deliveredRevenue() | currency:'INR':'symbol':'1.0-2' }}</strong>
+          <small class="muted">Closed fulfillment value</small>
+        </article>
+
+        <article class="surface-card stat-card">
+          <span>Pending orders</span>
+          <strong>{{ pendingOrders() }}</strong>
+          <small class="muted">Need action from seller</small>
+        </article>
+
+        <article class="surface-card stat-card">
+          <span>Active listings</span>
+          <strong>{{ activeCount() }}</strong>
+          <small class="muted">Visible products in catalog</small>
+        </article>
+      </div>
+
+      <div class="seller-overview-grid">
+        <section class="surface-card overview-card">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Recent order history</h2>
+              <p class="muted">Buyer details, status, and latest order totals.</p>
+            </div>
+            <a class="pill-link" routerLink="/seller/orders">Full order history</a>
+          </div>
+
+          @if (!recentOrders().length) {
+            <div class="empty-state">No seller orders yet. Once a buyer checks out, your order history appears here.</div>
+          } @else {
+            <div class="history-list">
+              @for (order of recentOrders(); track order.id) {
+                <article class="history-row">
+                  <div>
+                    <strong>{{ order.buyerBusinessName || order.buyerName }}</strong>
+                    <p class="muted">Order {{ order.id }} · {{ order.createdAt | date:'medium' }}</p>
+                  </div>
+                  <div class="history-meta">
+                    <span class="status-chip" [class.available]="order.status === 'delivered' || order.status === 'confirmed'" [class.low]="order.status === 'pending'" [class.off]="order.status === 'cancelled'">
+                      {{ order.status | titlecase }}
+                    </span>
+                    <strong>{{ order.totalAmount | currency:'INR':'symbol':'1.0-2' }}</strong>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="surface-card overview-card">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Operations snapshot</h2>
+              <p class="muted">Your current seller profile and inventory posture.</p>
+            </div>
+          </div>
+
+          <div class="detail-stack">
+            <div class="detail-row">
+              <span>Products listed</span>
+              <strong>{{ sellerProducts().length }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>Low stock products</span>
+              <strong>{{ lowStockCount() }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>Buyer accounts served</span>
+              <strong>{{ uniqueBuyers() }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>Average order value</span>
+              <strong>{{ averageOrderValue() | currency:'INR':'symbol':'1.0-2' }}</strong>
+            </div>
+          </div>
+        </section>
+      </div>
 
       <div class="seller-grid">
         <form class="surface-card seller-form field-grid" [formGroup]="form" (ngSubmit)="submit()">
@@ -160,28 +244,45 @@ import { Product, UnitCode, unitOptions } from '../../core/models/commerce.model
         padding: 2rem 0 3rem;
       }
 
+      .seller-hero,
+      .section-head,
+      .history-row,
+      .detail-row,
       .seller-header {
         display: flex;
-        align-items: flex-end;
+        align-items: center;
         justify-content: space-between;
         gap: 1rem;
       }
 
-      .seller-stats {
-        display: flex;
+      .seller-hero,
+      .stat-card,
+      .overview-card,
+      .seller-form,
+      .seller-card {
+        padding: 1.5rem;
+      }
+
+      .seller-panels {
+        display: grid;
         gap: 1rem;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .seller-overview-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+        gap: 1.5rem;
       }
 
       .stat-card {
-        min-width: 160px;
-        padding: 1rem 1.2rem;
         display: grid;
-        gap: 0.2rem;
+        gap: 0.35rem;
       }
 
       .stat-card strong {
-        font-family: 'Manrope', sans-serif;
-        font-size: 2rem;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 1.8rem;
       }
 
       .seller-grid {
@@ -190,15 +291,46 @@ import { Product, UnitCode, unitOptions } from '../../core/models/commerce.model
         gap: 1.5rem;
       }
 
-      .seller-form,
-      .seller-card {
-        padding: 1.5rem;
+      .accent-card {
+        background: linear-gradient(135deg, #0f7a37 0%, #16a34a 100%);
+        color: #fff;
+        border: none;
+      }
+
+      .accent-card .muted {
+        color: rgba(255, 255, 255, 0.78);
       }
 
       .seller-card {
         display: grid;
         gap: 1rem;
         overflow: hidden;
+      }
+
+      .history-list,
+      .detail-stack {
+        display: grid;
+        gap: 0.9rem;
+        margin-top: 1rem;
+      }
+
+      .history-row,
+      .detail-row {
+        padding: 1rem;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-md);
+        background: var(--surface-2);
+      }
+
+      .history-row strong,
+      .detail-row strong {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      }
+
+      .history-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
       }
 
       .seller-card h2 {
@@ -273,9 +405,14 @@ import { Product, UnitCode, unitOptions } from '../../core/models/commerce.model
       }
 
       @media (max-width: 960px) {
-        .seller-header,
+        .seller-panels,
+        .seller-overview-grid {
+          grid-template-columns: 1fr;
+        }
+
         .seller-card-top,
-        .seller-card-meta {
+        .seller-card-meta,
+        .seller-hero {
           flex-direction: column;
           align-items: flex-start;
         }
@@ -284,16 +421,61 @@ import { Product, UnitCode, unitOptions } from '../../core/models/commerce.model
           grid-template-columns: 1fr;
         }
       }
+
+      @media (max-width: 720px) {
+        .seller-panels {
+          grid-template-columns: 1fr;
+        }
+
+        .section-head,
+        .history-row,
+        .detail-row,
+        .seller-card-actions {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .history-meta {
+          width: 100%;
+          justify-content: space-between;
+        }
+      }
     `
   ]
 })
 export class SellerProductsPageComponent {
+  readonly authService = inject(AuthService);
+  readonly orderService = inject(OrderService);
   readonly productService = inject(ProductService);
   private readonly formBuilder = inject(FormBuilder);
   readonly units = unitOptions;
   readonly submitError = signal<string | null>(null);
   readonly sellerProducts = this.productService.sellerProducts;
   readonly activeCount = computed(() => this.sellerProducts().filter((product) => product.isAvailable).length);
+  readonly recentOrders = computed(() => this.orderService.sellerOrders().slice(0, 4));
+  readonly pendingOrders = computed(() => this.orderService.sellerOrders().filter((order) => order.status === 'pending').length);
+  readonly grossSales = computed(() =>
+    this.orderService
+      .sellerOrders()
+      .filter((order) => order.status === 'confirmed' || order.status === 'delivered')
+      .reduce((sum, order) => sum + order.totalAmount, 0)
+  );
+  readonly deliveredRevenue = computed(() =>
+    this.orderService
+      .sellerOrders()
+      .filter((order) => order.status === 'delivered')
+      .reduce((sum, order) => sum + order.totalAmount, 0)
+  );
+  readonly lowStockCount = computed(() => this.sellerProducts().filter((product) => product.stock > 0 && product.stock <= 20).length);
+  readonly uniqueBuyers = computed(() => new Set(this.orderService.sellerOrders().map((order) => order.buyerId)).size);
+  readonly averageOrderValue = computed(() => {
+    const orders = this.orderService.sellerOrders();
+    if (!orders.length) {
+      return 0;
+    }
+
+    return orders.reduce((sum, order) => sum + order.totalAmount, 0) / orders.length;
+  });
 
   readonly imagePreview = signal<string | null>(null);
   readonly imageSizeError = signal<string | null>(null);

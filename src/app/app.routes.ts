@@ -6,6 +6,7 @@ import { LoginPageComponent } from './features/auth/login-page.component';
 import { RegisterPageComponent } from './features/auth/register-page.component';
 import { BuyerDashboardPageComponent } from './features/dashboard/buyer-dashboard-page.component';
 import { BuyerOrdersPageComponent } from './features/dashboard/buyer-orders-page.component';
+import { AccountPageComponent } from './features/dashboard/account-page.component';
 import { CartCheckoutPageComponent } from './features/dashboard/cart-checkout-page.component';
 import { SellerProductsPageComponent } from './features/dashboard/seller-products-page.component';
 import { SellerOrdersPageComponent } from './features/dashboard/seller-orders-page.component';
@@ -50,6 +51,11 @@ export const routes: Routes = [
 				path: 'buyer/orders',
 				canActivate: [authGuard, roleGuard('buyer')],
 				component: BuyerOrdersPageComponent
+			},
+			{
+				path: 'account',
+				canActivate: [authGuard],
+				component: AccountPageComponent
 			},
 			{
 				path: 'seller',

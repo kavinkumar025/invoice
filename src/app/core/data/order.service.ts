@@ -182,9 +182,73 @@ export class OrderService {
   }
 
   async generateInvoice(orderId: string): Promise<GenerateInvoiceResponse> {
-    const callable = httpsCallable<{ orderId: string }, GenerateInvoiceResponse>(this.functions, 'generateInvoicePdf');
-    const response = await callable({ orderId });
-    return response.data;
+    try {
+      const callable = httpsCallable<{ orderId: string }, GenerateInvoiceResponse>(this.functions, 'generateInvoicePdf');
+      const response = await callable({ orderId });
+      return response.data;
+    } catch (error) {
+      throw new Error(this.describeInvoiceError(error));
+    }
+  }
+
+  async ensureInvoice(order: Order): Promise<GenerateInvoiceResponse> {
+    if (order.invoiceUrl) {
+      return {
+        id: order.invoiceId || order.id,
+        orderId: order.id,
+        buyerId: order.buyerId,
+        sellerId: order.sellerId,
+        invoiceNumber: order.invoiceNumber || `INV-${order.id.slice(-6).toUpperCase()}`,
+        subtotalAmount: order.subtotalAmount,
+        gstAmount: order.gstAmount,
+        totalAmount: order.totalAmount,
+        pdfUrl: order.invoiceUrl,
+        createdAt: order.updatedAt
+      };
+    }
+
+    return this.generateInvoice(order.id);
+  }
+
+  async downloadInvoicePdf(order: Order): Promise<void> {
+    const invoice = await this.ensureInvoice(order);
+    const response = await fetch(invoice.pdfUrl);
+
+    if (!response.ok) {
+      throw new Error('Could not download the invoice PDF.');
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const safeInvoiceNumber = (invoice.invoiceNumber || order.id).replace(/[^a-zA-Z0-9-_]/g, '-');
+
+    anchor.href = blobUrl;
+    anchor.download = `${safeInvoiceNumber}.pdf`;
+    anchor.rel = 'noopener';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(blobUrl);
+  }
+
+  private describeInvoiceError(error: unknown): string {
+    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+    const message = typeof error === 'object' && error && 'message' in error ? String(error.message) : '';
+
+    if (code.includes('unauthenticated')) {
+      return 'Sign in again and retry invoice generation.';
+    }
+
+    if (code.includes('not-found')) {
+      return 'The order could not be found for invoice generation.';
+    }
+
+    if (code.includes('internal') || message.toLowerCase() === 'internal') {
+      return 'Invoice generation failed in Firebase Functions. Deploy the latest functions and verify Firebase Storage is enabled.';
+    }
+
+    return message || 'Could not generate the invoice PDF.';
   }
 
   invoiceForOrder(orderId: string): Invoice | undefined {

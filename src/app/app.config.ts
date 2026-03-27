@@ -15,7 +15,7 @@ export const appConfig: ApplicationConfig = {
     provideFirebaseApp(() => initializeApp(firebaseConfig)),
     provideAuth(() => getAuth()),
     provideDatabase(() => getDatabase()),
-    provideFunctions(() => getFunctions()),
+    provideFunctions(() => getFunctions(undefined, 'us-central1')),
     provideRouter(routes)
   ]
 };
