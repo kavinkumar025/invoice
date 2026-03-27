@@ -82,8 +82,27 @@ import { Product, UnitCode, unitOptions } from '../../core/models/commerce.model
           </div>
 
           <div class="field">
-            <label for="imageUrl">Image URL</label>
-            <input id="imageUrl" type="url" formControlName="imageUrl" placeholder="https://..." />
+            <label>Product image</label>
+            <label class="upload-zone" [class.has-preview]="imagePreview()">
+              @if (imagePreview()) {
+                <img class="upload-preview" [src]="imagePreview()" alt="Preview" />
+                <span class="upload-replace">Click to replace</span>
+              } @else {
+                <div class="upload-placeholder">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="3"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                  <span>Click to upload image</span>
+                  <small class="muted">JPG, PNG, WebP — max 1 MB</small>
+                </div>
+              }
+              <input type="file" accept="image/jpeg,image/png,image/webp" (change)="onImagePick($event)" hidden />
+            </label>
+            @if (imageSizeError()) {
+              <p class="error-text" style="margin:0">{{ imageSizeError() }}</p>
+            }
           </div>
 
           @if (submitError()) {
@@ -99,6 +118,10 @@ import { Product, UnitCode, unitOptions } from '../../core/models/commerce.model
           } @else {
             @for (product of sellerProducts(); track product.id) {
               <article class="surface-card seller-card">
+                @if (product.imageUrl) {
+                  <img class="product-img" [src]="product.imageUrl" [alt]="product.name" />
+                }
+
                 <div class="seller-card-top">
                   <div>
                     <h2>{{ product.name }}</h2>
@@ -175,11 +198,61 @@ import { Product, UnitCode, unitOptions } from '../../core/models/commerce.model
       .seller-card {
         display: grid;
         gap: 1rem;
+        overflow: hidden;
       }
 
       .seller-card h2 {
         margin: 0 0 0.25rem;
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      }
+
+      .product-img {
+        width: calc(100% + 3rem);
+        margin: -1.5rem -1.5rem 0;
+        height: 180px;
+        object-fit: cover;
+        display: block;
+      }
+
+      /* Upload zone */
+      .upload-zone {
+        display: block;
+        cursor: pointer;
+        border: 1.5px dashed var(--line);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        transition: border-color 150ms ease;
+      }
+
+      .upload-zone:hover {
+        border-color: var(--brand);
+      }
+
+      .upload-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1.75rem 1rem;
+        color: var(--text-secondary);
+        text-align: center;
+        font-size: 0.875rem;
+      }
+
+      .upload-preview {
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .upload-replace {
+        display: block;
+        text-align: center;
+        padding: 0.4rem;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        background: rgba(0,0,0,0.03);
       }
 
       .seller-card-top,
@@ -222,6 +295,9 @@ export class SellerProductsPageComponent {
   readonly sellerProducts = this.productService.sellerProducts;
   readonly activeCount = computed(() => this.sellerProducts().filter((product) => product.isAvailable).length);
 
+  readonly imagePreview = signal<string | null>(null);
+  readonly imageSizeError = signal<string | null>(null);
+
   readonly form = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
     category: ['', [Validators.required, Validators.minLength(2)]],
@@ -229,9 +305,27 @@ export class SellerProductsPageComponent {
     price: [0, [Validators.required, Validators.min(1)]],
     unit: ['kg' as const, Validators.required],
     customUnitLabel: [''],
-    stock: [0, [Validators.required, Validators.min(0)]],
-    imageUrl: ['']
+    stock: [0, [Validators.required, Validators.min(0)]]
   });
+
+  onImagePick(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    const maxBytes = 1 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      this.imageSizeError.set('Image exceeds 1 MB. Please choose a smaller file.');
+      this.imagePreview.set(null);
+      return;
+    }
+
+    this.imageSizeError.set(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.imagePreview.set(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
 
   async submit(): Promise<void> {
     if (this.form.invalid) {
@@ -258,7 +352,7 @@ export class SellerProductsPageComponent {
         unit,
         customUnitLabel: unit === 'custom' ? value.customUnitLabel.trim() : undefined,
         stock: Number(value.stock),
-        imageUrl: value.imageUrl.trim() || undefined
+        imageUrl: this.imagePreview() ?? undefined
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not save product.';
@@ -266,6 +360,8 @@ export class SellerProductsPageComponent {
       return;
     }
 
+    this.imagePreview.set(null);
+    this.imageSizeError.set(null);
     this.form.reset({
       name: '',
       category: '',
@@ -273,8 +369,7 @@ export class SellerProductsPageComponent {
       price: 0,
       unit: 'kg',
       customUnitLabel: '',
-      stock: 0,
-      imageUrl: ''
+      stock: 0
     });
   }
 

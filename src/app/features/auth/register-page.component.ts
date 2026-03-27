@@ -87,12 +87,37 @@ import { UserRole } from '../../core/models/commerce.models';
     `
       .auth-layout {
         display: grid;
-        grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1fr);
+        grid-template-columns: minmax(0, 0.85fr) minmax(380px, 1fr);
         gap: 1.5rem;
-        padding: 2rem 0 3rem;
+        padding: 2.5rem 0 4rem;
+        align-items: start;
       }
 
-      .auth-copy,
+      .auth-copy {
+        padding: 2.5rem;
+        background: linear-gradient(145deg, #0d4023 0%, var(--brand) 60%, #22c55e 100%);
+        color: white;
+        min-height: 420px;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        border: none;
+      }
+
+      .auth-copy .eyebrow {
+        background: rgba(255, 255, 255, 0.2);
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .auth-copy .section-title {
+        color: white;
+      }
+
+      .auth-copy .muted {
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.7;
+      }
+
       .auth-form {
         padding: 2rem;
       }
@@ -105,6 +130,10 @@ import { UserRole } from '../../core/models/commerce.models';
       @media (max-width: 860px) {
         .auth-layout {
           grid-template-columns: 1fr;
+        }
+
+        .auth-copy {
+          min-height: auto;
         }
       }
     `
