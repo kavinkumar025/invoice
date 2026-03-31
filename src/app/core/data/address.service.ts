@@ -2,6 +2,7 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { Database, off, onValue, push, ref, remove, update } from '@angular/fire/database';
 
 import { AuthService } from '../auth/auth.service';
+import { GeocodingService } from '../location/geocoding.service';
 import { Address, AddressDraft } from '../models/commerce.models';
 import { removeUndefinedDeep } from './firebase-data.util';
 
@@ -9,6 +10,7 @@ import { removeUndefinedDeep } from './firebase-data.util';
 export class AddressService {
   private readonly database = inject(Database);
   private readonly authService = inject(AuthService);
+  private readonly geocodingService = inject(GeocodingService);
   private readonly addressesSignal = signal<Address[]>([]);
   private readonly loadingSignal = signal(false);
 
@@ -59,6 +61,8 @@ export class AddressService {
       throw new Error('Could not generate an address id.');
     }
 
+    const resolvedAddress = await this.geocodingService.geocodeAddress(draft).catch(() => null);
+
     const hasDefault = this.addressesSignal().some((address) => address.isDefault);
     const shouldBeDefault = draft.isDefault ?? !hasDefault;
     const updates: Record<string, Address | boolean | string> = {
@@ -72,6 +76,7 @@ export class AddressService {
         city: draft.city,
         state: draft.state,
         postalCode: draft.postalCode,
+        coordinates: resolvedAddress?.coordinates ?? draft.coordinates,
         isDefault: shouldBeDefault
       },
       [`users/${userId}/defaultAddressId`]: addressId

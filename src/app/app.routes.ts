@@ -4,6 +4,7 @@ import { guestGuard, authGuard, roleGuard } from './core/auth/auth.guards';
 import { CatalogPageComponent } from './features/catalog/catalog-page.component';
 import { LoginPageComponent } from './features/auth/login-page.component';
 import { RegisterPageComponent } from './features/auth/register-page.component';
+import { DashboardPageComponent } from './features/dashboard/dashboard-page.component';
 import { BuyerDashboardPageComponent } from './features/dashboard/buyer-dashboard-page.component';
 import { BuyerOrdersPageComponent } from './features/dashboard/buyer-orders-page.component';
 import { AccountPageComponent } from './features/dashboard/account-page.component';
@@ -11,6 +12,8 @@ import { CartCheckoutPageComponent } from './features/dashboard/cart-checkout-pa
 import { SellerProductsPageComponent } from './features/dashboard/seller-products-page.component';
 import { SellerOrdersPageComponent } from './features/dashboard/seller-orders-page.component';
 import { HomePageComponent } from './features/home/home-page.component';
+import { SellerMapPageComponent } from './features/maps/seller-map-page.component';
+import { BusinessProfilePageComponent } from './features/dashboard/business-profile-page.component';
 import { ShellComponent } from './layout/shell.component';
 
 export const routes: Routes = [
@@ -36,6 +39,11 @@ export const routes: Routes = [
 				path: 'register',
 				canActivate: [guestGuard],
 				component: RegisterPageComponent
+			},
+			{
+				path: 'dashboard',
+				canActivate: [authGuard],
+				component: DashboardPageComponent
 			},
 			{
 				path: 'buyer',
@@ -66,6 +74,15 @@ export const routes: Routes = [
 				path: 'seller/orders',
 				canActivate: [authGuard, roleGuard('seller')],
 				component: SellerOrdersPageComponent
+			},
+			{
+				path: 'maps',
+				component: SellerMapPageComponent
+			},
+			{
+				path: 'business-profile',
+				canActivate: [authGuard],
+				component: BusinessProfilePageComponent
 			}
 		]
 	},

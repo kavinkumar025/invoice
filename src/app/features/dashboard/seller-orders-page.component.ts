@@ -13,7 +13,7 @@ import { Order, OrderStatus } from '../../core/models/commerce.models';
       <header class="surface-card orders-header">
         <div>
           <span class="eyebrow">Seller orders</span>
-          <h1 class="section-title">Process incoming COD orders and invoices</h1>
+          <h1 class="section-title">Process incoming COD orders and download invoice PDFs</h1>
         </div>
         <a class="pill-link" routerLink="/seller">Back to product desk</a>
       </header>
@@ -62,7 +62,7 @@ import { Order, OrderStatus } from '../../core/models/commerce.models';
                 </div>
                 <div class="detail-box">
                   <span class="muted">Invoice</span>
-                  <strong>{{ order.invoiceNumber || 'Not generated yet' }}</strong>
+                  <strong>{{ invoiceNumber(order) }}</strong>
                 </div>
                 <div class="detail-box">
                   <span class="muted">Payment</span>
@@ -79,12 +79,10 @@ import { Order, OrderStatus } from '../../core/models/commerce.models';
                   <button class="btn btn-secondary" type="button" (click)="updateStatus(order.id, status)">{{ status | titlecase }}</button>
                 }
 
-                @if (order.invoiceNumber) {
-                  <span class="pill-link">{{ order.invoiceNumber }}</span>
-                }
+                <span class="pill-link">{{ invoiceNumber(order) }}</span>
 
                 <button class="btn btn-secondary" type="button" [disabled]="busyOrderId() === order.id" (click)="downloadInvoice(order.id)">
-                  {{ busyOrderId() === order.id ? 'Preparing PDF...' : (order.invoiceUrl ? 'Download invoice PDF' : 'Generate and download PDF') }}
+                  {{ busyOrderId() === order.id ? 'Preparing PDF...' : 'Generate and download PDF' }}
                 </button>
               </div>
 
@@ -200,6 +198,10 @@ export class SellerOrdersPageComponent {
   readonly orderService = inject(OrderService);
   readonly busyOrderId = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
+
+  invoiceNumber(order: { id: string; invoiceNumber?: string; createdAt: string }): string {
+    return this.orderService.invoiceNumberForOrder(order);
+  }
 
   nextStatuses(current: OrderStatus): OrderStatus[] {
     const flow: Record<OrderStatus, OrderStatus[]> = {

@@ -109,7 +109,7 @@ export class AuthService {
 
       await set(ref(this.database, `users/${credential.user.uid}`), removeUndefinedDeep(profile));
       this.profileSignal.set(profile);
-      await this.router.navigateByUrl(payload.role === 'seller' ? '/seller' : '/buyer');
+      await this.router.navigateByUrl('/dashboard');
     } catch (error) {
       this.errorSignal.set(this.mapAuthError(error));
       throw error;
@@ -132,7 +132,7 @@ export class AuthService {
       }
 
       this.profileSignal.set(profile);
-      await this.router.navigateByUrl(profile.role === 'seller' ? '/seller' : '/buyer');
+      await this.router.navigateByUrl('/dashboard');
     } catch (error) {
       this.errorSignal.set(this.mapAuthError(error));
       throw error;

@@ -12,13 +12,13 @@ import { OrderService } from '../../core/data/order.service';
       <header class="surface-card orders-header">
         <div>
           <span class="eyebrow">Buyer orders</span>
-          <h1 class="section-title">Track COD orders and invoice PDFs</h1>
+          <h1 class="section-title">Track COD orders and download invoice PDFs</h1>
         </div>
         <a class="pill-link" routerLink="/catalog">Back to catalog</a>
       </header>
 
       @if (!orderService.buyerOrders().length) {
-        <div class="surface-card empty-state">No buyer orders yet. Once checkout completes, orders and invoice links appear here.</div>
+        <div class="surface-card empty-state">No buyer orders yet. Once checkout completes, orders appear here and each invoice PDF can be generated locally.</div>
       } @else {
         <div class="panel-grid">
           @for (order of orderService.buyerOrders(); track order.id) {
@@ -61,7 +61,7 @@ import { OrderService } from '../../core/data/order.service';
                 </div>
                 <div class="detail-box">
                   <span class="muted">Invoice</span>
-                  <strong>{{ order.invoiceNumber || 'Not generated yet' }}</strong>
+                  <strong>{{ invoiceNumber(order) }}</strong>
                 </div>
                 <div class="detail-box detail-box-wide">
                   <span class="muted">Shipping address</span>
@@ -72,13 +72,11 @@ import { OrderService } from '../../core/data/order.service';
               <div class="order-meta">
                 <span>Total: {{ order.totalAmount | currency:'INR':'symbol':'1.0-2' }}</span>
                 <button class="btn btn-secondary" type="button" [disabled]="busyOrderId() === order.id" (click)="downloadInvoice(order.id)">
-                  {{ busyOrderId() === order.id ? 'Preparing PDF...' : (order.invoiceUrl ? 'Download invoice PDF' : 'Generate and download PDF') }}
+                  {{ busyOrderId() === order.id ? 'Preparing PDF...' : 'Generate and download PDF' }}
                 </button>
               </div>
 
-              @if (order.invoiceNumber) {
-                <p class="muted">Invoice {{ order.invoiceNumber }}</p>
-              }
+              <p class="muted">Invoice {{ invoiceNumber(order) }}</p>
 
               @if (actionError() && busyOrderId() === null) {
                 <p class="error-text">{{ actionError() }}</p>
@@ -188,6 +186,10 @@ export class BuyerOrdersPageComponent {
   readonly orderService = inject(OrderService);
   readonly busyOrderId = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
+
+  invoiceNumber(order: { id: string; invoiceNumber?: string; createdAt: string }): string {
+    return this.orderService.invoiceNumberForOrder(order);
+  }
 
   async downloadInvoice(orderId: string): Promise<void> {
     const order = this.orderService.buyerOrders().find((item) => item.id === orderId);

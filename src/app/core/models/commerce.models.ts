@@ -4,6 +4,23 @@ export type UnitCode = 'kg' | 'liter' | 'piece' | 'custom';
 
 export type OrderStatus = 'pending' | 'confirmed' | 'delivered' | 'cancelled';
 
+export interface GeoCoordinates {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+}
+
+export interface SavedLocation {
+  label?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  coordinates: GeoCoordinates;
+  source: 'browser' | 'manual';
+  updatedAt: string;
+}
+
 export interface Address {
   id: string;
   label: string;
@@ -14,6 +31,7 @@ export interface Address {
   city: string;
   state: string;
   postalCode: string;
+  coordinates?: GeoCoordinates;
   isDefault: boolean;
 }
 
@@ -27,6 +45,7 @@ export interface AddressDraft {
   city: string;
   state: string;
   postalCode: string;
+  coordinates?: GeoCoordinates;
   isDefault?: boolean;
 }
 
@@ -38,6 +57,8 @@ export interface UserProfile {
   phone?: string;
   businessName?: string;
   defaultAddressId?: string;
+  location?: SavedLocation;
+  rating?: number;
   createdAt: string;
 }
 
@@ -128,3 +149,58 @@ export const unitOptions: Array<{ value: UnitCode; label: string }> = [
   { value: 'piece', label: 'Piece' },
   { value: 'custom', label: 'Custom unit' }
 ];
+
+export type ExpenseCategory =
+  | 'salary'
+  | 'raw_material'
+  | 'rent_utilities'
+  | 'marketing'
+  | 'transport'
+  | 'insurance'
+  | 'equipment'
+  | 'miscellaneous';
+
+export const expenseCategoryOptions: Array<{ value: ExpenseCategory; label: string }> = [
+  { value: 'salary', label: 'Salary' },
+  { value: 'raw_material', label: 'Raw Material' },
+  { value: 'rent_utilities', label: 'Rent & Utilities' },
+  { value: 'marketing', label: 'Marketing' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'equipment', label: 'Equipment' },
+  { value: 'miscellaneous', label: 'Miscellaneous' }
+];
+
+export interface InvestmentEntry {
+  id: string;
+  investorName: string;
+  amount: number;
+  date: string;
+  notes?: string;
+}
+
+export interface ExpenseEntry {
+  id: string;
+  category: ExpenseCategory;
+  label: string;
+  amount: number;
+  date: string;
+  recurring: boolean;
+}
+
+export interface LoanEntry {
+  id: string;
+  lender: string;
+  principalAmount: number;
+  interestRate: number;
+  tenureMonths: number;
+  emiAmount: number;
+  startDate: string;
+  notes?: string;
+}
+
+export interface BusinessProfile {
+  investments: Record<string, InvestmentEntry>;
+  expenses: Record<string, ExpenseEntry>;
+  loans: Record<string, LoanEntry>;
+}
